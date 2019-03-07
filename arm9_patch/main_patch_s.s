@@ -11,8 +11,23 @@ branch_2000d5e:
 	bl load_arm9_extension
 	pop {r2-r3}
 	
-	ldr r0, =#arm9_extension_start + 1
+	ldr r0, arm9_extension_allocated_offset
+	add r0, r0, #0x1
 	bx r0
 
 .pool
 
+.align 2
+@ r0: function offset
+.global call_arm9_extension_function
+call_arm9_extension_function:
+	push {r1}
+	ldr r1, arm9_extension_allocated_offset
+	add r0, r0, r1
+	pop {r1}
+	bx r0
+
+.align 2
+.global arm9_extension_allocated_offset
+arm9_extension_allocated_offset:
+	.word 0

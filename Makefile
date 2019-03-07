@@ -1,4 +1,9 @@
 
+ifndef DEVKITARM
+$(error DEVKITARM variable is blank)
+else
+PATH := $(DEVKITARM)/bin:$(PATH)
+endif
 
 PYTHON := python3
 PATCHER := $(PYTHON) tools/rom_patcher.py
@@ -25,6 +30,13 @@ ARM9_PATCH_SRC := $(BUILD)/arm9_patch/main_patch_s.o $(BUILD)/arm9_patch/main_pa
 ARM9_PATCH_OBJ := $(BUILD)/arm9_patch.o
 ARM9_PATCH_BIN := $(BUILD)/arm9_patch.bin
 
+# ARM9 extension
+SRC_DIR := src
+EXTENSION_SRC := $(patsubst %.c,$(BUILD)/%.o,$(wildcard $(SRC_DIR)/*.c)) $(patsubst %.s,$(BUILD)/%.o,$(wildcard $(SRC_DIR)/*.s))
+EXTENSION_OBJ := $(BUILD)/arm9_extension.o
+EXTENSION_BIN := $(BUILD)/arm9_extension.bin
+OFFSETS_FILE := $(BUILD)/offsets.txt
+
 
 $(BUILD)/$(ARM9_PATCH_DIR)/%.o: $(ARM9_PATCH_DIR)/%.s
 	@mkdir -p $(@D)
@@ -35,20 +47,10 @@ $(BUILD)/$(ARM9_PATCH_DIR)/%.o: $(ARM9_PATCH_DIR)/%.c
 	@mkdir -p $(@D)
 	$(CC) $(C_OPTIONS) -c -o $@ $<
 
+$(ARM9_PATCH_BIN): $(EXTENSION_OBJ)
+	$(OBJCOPY) --only-section=arm9_patch -O binary $<  $@
 
-$(ARM9_PATCH_OBJ): $(ARM9_PATCH_SRC) arm9_patch/main_patch.ld
-	@mkdir -p $(@D)
-	$(LD) $(LD_OPTIONS) -T arm9_patch/main_patch.ld -o $@ $(ARM9_PATCH_SRC)
 
-$(ARM9_PATCH_BIN): $(ARM9_PATCH_OBJ)
-	$(OBJCOPY) -O binary $<  $@
-
-# ARM9 extension
-SRC_DIR := src
-EXTENSION_SRC := $(patsubst %.c,$(BUILD)/%.o,$(wildcard $(SRC_DIR)/*.c)) $(patsubst %.s,$(BUILD)/%.o,$(wildcard $(SRC_DIR)/*.s))
-EXTENSION_OBJ := $(BUILD)/arm9_extension.o
-EXTENSION_BIN := $(BUILD)/arm9_extension.bin
-OFFSETS_FILE := $(BUILD)/offsets.txt
 
 $(BUILD)/$(SRC_DIR)/%.o: $(SRC_DIR)/%.s
 	@mkdir -p $(@D)
@@ -60,12 +62,12 @@ $(BUILD)/$(SRC_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(C_OPTIONS) -c -o $@ $<
 
 
-$(EXTENSION_OBJ): $(EXTENSION_SRC) arm9_extension.ld
+$(EXTENSION_OBJ): $(EXTENSION_SRC) $(ARM9_PATCH_SRC) arm9_extension.ld
 	@mkdir -p $(@D)
-	$(LD) $(LD_OPTIONS) -T arm9_extension.ld -o $@ $(EXTENSION_SRC)
+	$(LD) $(LD_OPTIONS) -T arm9_extension.ld -o $@ $(EXTENSION_SRC) $(ARM9_PATCH_SRC)
 
 $(EXTENSION_BIN): $(EXTENSION_OBJ)
-	$(OBJCOPY) -O binary $< $@
+	$(OBJCOPY) --only-section=arm9_extension -O binary $< $@
 
 # -------------------------
 
